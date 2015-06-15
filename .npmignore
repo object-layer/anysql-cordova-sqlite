@@ -1,2 +1,5 @@
 # ES6 source directory
 src
+
+# Cordova platforms
+example/cordova-app/platforms

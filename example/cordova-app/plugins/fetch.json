@@ -1,0 +1,8 @@
+{
+    "io.kinda.cordova-sqlite-plugin": {
+        "source": {
+            "type": "local",
+            "path": "/Users/mvila/Projects/cordova-sqlite-plugin"
+        }
+    }
+}

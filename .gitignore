@@ -15,3 +15,6 @@ node_modules
 
 # Build directory
 lib
+
+# Cordova platforms
+example/cordova-app/platforms

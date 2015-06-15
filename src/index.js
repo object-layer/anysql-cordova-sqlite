@@ -1,107 +1,72 @@
 'use strict';
 
 let _ = require('lodash');
-let co = require('co');
+let wait = require('co-wait');
+let AwaitLock = require('await-lock');
 let KindaObject = require('kinda-object');
 
 let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
-  this.setCreator(function(options = {}) {
+  this.creator = function(options = {}) {
     if (!options.name) throw new Error('Cordova SQLite database name is missing');
-    let that = this;
-    document.addEventListener('deviceready', function() {
-      that.database = window.sqlitePlugin.openDatabase({
-        name: options.name,
-        location: 2
+    this.awaitLock = new AwaitLock();
+    document.addEventListener('deviceready', () => {
+      let sqlite = window.cordova.require('io.kinda.cordova-sqlite-plugin.sqlite');
+      let connection = sqlite.createConnection(options.name);
+      connection.connect(err => {
+        if (err) throw err;
+        this.connection = connection;
       });
     }, false);
-  });
+  };
 
-  this.initialize = function(cb) {
-    let that = this;
+  this.initialize = function *() {
+    if (this.connection) return;
     let timestamp = Date.now();
-    let check = function() {
-      if (that.database) {
-        cb();
-        return;
-      }
+    while (!this.connection) {
+      yield wait(200);
       if (Date.now() - timestamp > 5000) {
-        cb(new Error('initialization of KindaCordovaSQLite failed (Cordova didn\'t start after 5 seconds)'));
-        return;
+        throw new Error('initialization of KindaCordovaSQLite failed (Cordova didn\'t start after 5 seconds)');
       }
-      setTimeout(check, 200);
-    };
-    check();
+    }
   };
 
-  this.query = function(sql, values) {
-    let that = this;
-    values = that.normalizeValues(values);
-    let result;
-    return function(cb) {
-      that.initialize(function(err) {
-        if (err) {
-          cb(err);
-          return;
-        }
-        that.database.transaction(function(tr) {
-          tr.executeSql(sql, values, function(innerTr, res) {
-            result = that.normalizeResult(res);
-          });
-        }, function(innerErr) { // transaction error callback
-          cb(innerErr);
-        }, function() { // transaction success callback
-          cb(null, result);
-        });
-      });
-    };
+  this.lock = function *(fn) {
+    yield this.awaitLock.acquireAsync();
+    try {
+      yield this.initialize();
+      return yield fn();
+    } finally {
+      this.awaitLock.release();
+    }
   };
 
-  this.transaction = function(fn) {
-    let that = this;
-    return function(cb) {
-      that.initialize(function(err) {
-        if (err) {
-          cb(err);
-          return;
-        }
-        let lastErr;
-        let transactionAborted;
-        that.database.transaction(function(tr) {
-          co(function *() {
-            try {
-              yield fn({
-                query(sql, values) {
-                  values = that.normalizeValues(values);
-                  return function(innerCb) {
-                    try {
-                      tr.executeSql(sql, values, function(innerTr, res) {
-                        innerCb(null, that.normalizeResult(res));
-                      }, function(innerTr, innerErr) {
-                        transactionAborted = true;
-                        innerCb(innerErr);
-                        return true;
-                      });
-                    } catch (innerErr) {
-                      cb(innerErr);
-                    }
-                  };
-                }
-              });
-            } catch (innerErr) {
-              lastErr = innerErr;
-              if (!transactionAborted) {
-                transactionAborted = true;
-                tr.executeSql('arghhhh'); // force the transaction to fail
-              }
-            }
-          })();
-        }, function(innerErr) { // transaction error callback
-          cb(lastErr || innerErr);
-        }, function() { // transaction success callback
-          cb(null);
-        });
-      });
-    };
+  this.query = function *(sql, values) {
+    return yield this.lock(function *() {
+      return yield this._query(sql, values);
+    }.bind(this));
+  };
+
+  this._query = function *(sql, values) {
+    values = this.normalizeValues(values);
+    let result = yield function(callback) {
+      this.connection.query(sql, values, callback);
+    }.bind(this);
+    result = this.normalizeResult(result);
+    return result;
+  };
+
+  this.transaction = function *(fn) {
+    return yield this.lock(function *() {
+      yield this._query('BEGIN');
+      try {
+        let result = yield fn({ query: this._query.bind(this) });
+        yield this._query('COMMIT');
+        return result;
+      } catch (err) {
+        yield this._query('ROLLBACK');
+        throw err;
+      }
+    }.bind(this));
   };
 
   this.normalizeValues = function(values) {
@@ -118,19 +83,14 @@ let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
   this.normalizeResult = function(result) {
     if (!result) return result;
     let normalizedResult = [];
+    if (result.insertId != null) {
+      normalizedResult.insertId = result.insertId;
+    }
     if (result.rowsAffected != null) {
       normalizedResult.affectedRows = result.rowsAffected;
     }
-    try {
-      if (result.insertId != null) {
-        normalizedResult.insertId = result.insertId;
-      }
-    } catch (err) {
-      // noop
-    }
     if (!result.rows) return normalizedResult;
-    for (let i = 0; i < result.rows.length; i++) {
-      let row = result.rows.item(i);
+    for (let row of result.rows) {
       let normalizedRow = {};
       _.forOwn(row, function(val, key) { // eslint-disable-line no-loop-func
         if (val && val.substr && val.substr(0, 4) === 'bin!') {
