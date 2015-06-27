@@ -49,6 +49,7 @@ let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
   this._query = function *(sql, values) {
     values = this.normalizeValues(values);
     let result = yield function(callback) {
+      // console.log(sql, JSON.stringify(values));
       this.connection.query(sql, values, callback);
     }.bind(this);
     result = this.normalizeResult(result);

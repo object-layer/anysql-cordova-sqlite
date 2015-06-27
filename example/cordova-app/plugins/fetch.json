@@ -4,5 +4,11 @@
             "type": "local",
             "path": "/Users/mvila/Projects/cordova-sqlite-plugin"
         }
+    },
+    "org.apache.cordova.console": {
+        "source": {
+            "type": "registry",
+            "id": "org.apache.cordova.console"
+        }
     }
 }
