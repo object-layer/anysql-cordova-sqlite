@@ -1,6 +1,6 @@
-# kinda-aws
+# cordova-sqlite-plugin
 
-Low-level interface to SQLite for Cordova/PhoneGap.
+SQLite low-level interface for Cordova/PhoneGap.
 
 ```js
 // TODO: documentation!

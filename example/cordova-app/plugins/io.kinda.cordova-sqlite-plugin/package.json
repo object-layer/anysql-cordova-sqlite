@@ -1,7 +1,7 @@
 {
   "name": "cordova-sqlite-plugin",
   "version": "0.1.0",
-  "description": "Low-level interface to SQLite for Cordova/PhoneGap",
+  "description": "SQLite low-level interface for Cordova/PhoneGap",
   "cordova": {
     "id": "cordova-sqlite-plugin",
     "platforms": [
