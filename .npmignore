@@ -1,5 +1,6 @@
-# ES6 source directory
+.eslintrc
+.npmignore
+.travis.yml
 src
-
-# Cordova platforms
-example/cordova-app/platforms
+test.js
+example
