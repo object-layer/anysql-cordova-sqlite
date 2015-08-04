@@ -28,6 +28,8 @@
     "babel": "^5.4.7",
     "babelify": "^6.1.2",
     "browserify": "^10.2.4",
-    "co": "^4.5.4"
+    "co": "^4.5.4",
+    "eslint": "^1.0.0",
+    "eslint-config-kinda": "^0.2.0"
   }
 }
