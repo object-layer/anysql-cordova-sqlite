@@ -14,73 +14,72 @@ window.addEventListener('error', function(err) {
   log(err.message);
 }, false);
 
-let co = require('co');
-let wait = require('co-wait');
+let util = require('kinda-util').create();
 let KindaCordovaSQLite = require('../src');
 
 let db = KindaCordovaSQLite.create({ name: 'example' });
 
-co(function *() {
+(async function() {
   log('=== Simple select ===');
-  let result = yield db.query('SELECT ? + ? AS solution', [2, 3]);
+  let result = await db.query('SELECT ? + ? AS solution', [2, 3]);
   log(JSON.stringify(result));
 
-  yield db.query('DROP TABLE IF EXISTS test');
-  yield db.query('CREATE TABLE test (id INTEGER PRIMARY KEY, counter INTEGER)');
-  result = yield db.query('INSERT INTO test (counter) VALUES (?)', [0]);
+  await db.query('DROP TABLE IF EXISTS test');
+  await db.query('CREATE TABLE test (id INTEGER PRIMARY KEY, counter INTEGER)');
+  result = await db.query('INSERT INTO test (counter) VALUES (?)', [0]);
   let id = result.insertId;
 
   log('=== Completed transaction ===');
-  yield db.transaction(function *(tr) {
-    let res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+  await db.transaction(async function(tr) {
+    let res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
     log(JSON.stringify(res));
     let counter = res[0].counter;
     counter++;
-    yield tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
-    res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+    await tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
+    res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
     log(JSON.stringify(res));
   });
-  result = yield db.query('SELECT * FROM test WHERE id=?', [id]);
+  result = await db.query('SELECT * FROM test WHERE id=?', [id]);
   log(JSON.stringify(result));
 
   log('=== Aborted transaction ===');
   try {
-    yield db.transaction(function *(tr) {
-      let res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+    await db.transaction(async function(tr) {
+      let res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
       log(JSON.stringify(res));
       let counter = res[0].counter;
       counter++;
-      yield tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
-      res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+      await tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
+      res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
       log(JSON.stringify(res));
       throw new Error('something wrong!');
     });
   } catch (err) {
     log(err.message);
   }
-  result = yield db.query('SELECT * FROM test WHERE id=?', [id]);
+  result = await db.query('SELECT * FROM test WHERE id=?', [id]);
   log(JSON.stringify(result));
 
   log('=== Concurrent accesses ===');
-  yield db.query('UPDATE test SET counter=? WHERE id=?', [0, id]);
-  result = yield db.query('SELECT * FROM test WHERE id=?', [id]);
+  await db.query('UPDATE test SET counter=? WHERE id=?', [0, id]);
+  result = await db.query('SELECT * FROM test WHERE id=?', [id]);
   log(JSON.stringify(result));
   for (let i = 0; i < 100; i++) {
-    co(function *() {
-      yield wait(Math.round(Math.random() * 1000));
+    (async function() {
+      await util.timeout(Math.round(Math.random() * 1000));
       log(`i: ${i}`);
-      yield db.transaction(function *(tr) {
-        let res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+      await db.transaction(async function(tr) {
+        let res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
         let counter = res[0].counter;
         counter++;
-        yield tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
-        res = yield tr.query('SELECT * FROM test WHERE id=?', [id]);
+        await tr.query('UPDATE test SET counter=? WHERE id=?', [counter, id]);
+        res = await tr.query('SELECT * FROM test WHERE id=?', [id]);
         log(JSON.stringify(res));
       });
-    }).catch(function(err) {
+    })().catch(function(err) {
       log(err.message);
     });
   }
-}).catch(function(err) {
+})().catch(function(err) {
   log(err.message);
 });

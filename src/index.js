@@ -1,7 +1,7 @@
 'use strict';
 
 let _ = require('lodash');
-let wait = require('co-wait');
+let util = require('kinda-util').create();
 let AwaitLock = require('await-lock');
 let KindaObject = require('kinda-object');
 
@@ -19,52 +19,58 @@ let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
     }, false);
   };
 
-  this.initialize = function *() {
+  this.initialize = async function() {
     if (this.connection) return;
     let timestamp = Date.now();
     while (!this.connection) {
-      yield wait(200);
+      await util.timeout(200);
       if (Date.now() - timestamp > 5000) {
         throw new Error('initialization of KindaCordovaSQLite failed (Cordova didn\'t start after 5 seconds)');
       }
     }
   };
 
-  this.lock = function *(fn) {
-    yield this.awaitLock.acquireAsync();
+  this.lock = async function(fn) {
+    await this.awaitLock.acquireAsync();
     try {
-      yield this.initialize();
-      return yield fn();
+      await this.initialize();
+      return await fn();
     } finally {
       this.awaitLock.release();
     }
   };
 
-  this.query = function *(sql, values) {
-    return yield this.lock(function *() {
-      return yield this._query(sql, values);
+  this.query = async function(sql, values) {
+    return await this.lock(async function() {
+      return await this._query(sql, values);
     }.bind(this));
   };
 
-  this._query = function *(sql, values) {
+  this._query = async function(sql, values) {
     values = this.normalizeValues(values);
-    let result = yield function(callback) {
-      // console.log(sql, JSON.stringify(values));
-      this.connection.query(sql, values, callback);
-    }.bind(this);
+    let result = await this.__query(sql, values);
     result = this.normalizeResult(result);
     return result;
   };
 
-  this.transaction = function *(fn) {
-    return yield this.lock(function *() {
-      yield this._query('BEGIN');
+  this.__query = function(sql, values) {
+    // console.log(sql, JSON.stringify(values));
+    return new Promise((resolve, reject) => {
+      this.connection.query(sql, values, function(err, res) {
+        if (err) reject(err); else resolve(res);
+      });
+    });
+  };
+
+  this.transaction = async function(fn) {
+    return await this.lock(async function() {
+      await this._query('BEGIN');
       try {
-        let result = yield fn({ query: this._query.bind(this) });
-        yield this._query('COMMIT');
+        let result = await fn({ query: this._query.bind(this) });
+        await this._query('COMMIT');
         return result;
       } catch (err) {
-        yield this._query('ROLLBACK');
+        await this._query('ROLLBACK');
         throw err;
       }
     }.bind(this));
