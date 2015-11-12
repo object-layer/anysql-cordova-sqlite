@@ -21,10 +21,6 @@
                         {
                             "xml": "<feature name=\"SQLitePlugin\"><param name=\"ios-package\" value=\"SQLitePlugin\" /></feature>",
                             "count": 1
-                        },
-                        {
-                            "xml": "<feature name=\"Console\"><param name=\"ios-package\" value=\"CDVLogger\" /></feature>",
-                            "count": 1
                         }
                     ]
                 }
@@ -32,10 +28,7 @@
         }
     },
     "installed_plugins": {
-        "io.kinda.cordova-sqlite-plugin": {
-            "PACKAGE_NAME": "io.kinda.SQLiteExample"
-        },
-        "org.apache.cordova.console": {
+        "cordova-sqlite-plugin": {
             "PACKAGE_NAME": "io.kinda.SQLiteExample"
         }
     },

@@ -14,10 +14,10 @@ window.addEventListener('error', function(err) {
   log(err.message);
 }, false);
 
-let util = require('kinda-util').create();
-let KindaCordovaSQLite = require('../src');
+import sleep from 'sleep-promise';
+import AnySQLCordovaSQLite from '../src';
 
-let db = KindaCordovaSQLite.create({ name: 'example' });
+let db = new AnySQLCordovaSQLite('cordova-sqlite:example');
 
 (async function() {
   log('=== Simple select ===');
@@ -66,7 +66,7 @@ let db = KindaCordovaSQLite.create({ name: 'example' });
   log(JSON.stringify(result));
   for (let i = 0; i < 100; i++) {
     (async function() {
-      await util.timeout(Math.round(Math.random() * 1000));
+      await sleep(Math.round(Math.random() * 1000));
       log(`i: ${i}`);
       await db.transaction(async function(tr) {
         let res = await tr.query('SELECT * FROM test WHERE id=?', [id]);

@@ -6,13 +6,13 @@ let fs = require('fs');
 let browserify = require('browserify');
 let babelify = require('babelify');
 
-let build = function() {
+function build() {
   browserify({ debug: true })
     .transform(babelify)
     .require('./example/index.js', { entry: true })
     .bundle()
     .on('error', console.error.bind(console))
     .pipe(fs.createWriteStream('./example/cordova-app/www/bundle.js'));
-};
+}
 
 build();

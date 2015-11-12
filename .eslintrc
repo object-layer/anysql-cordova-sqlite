@@ -1,3 +1,3 @@
 {
-  "extends": "eslint-config-kinda"
+  "extends": "eslint-config-next"
 }

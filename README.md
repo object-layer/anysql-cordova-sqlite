@@ -1,5 +1,11 @@
-# kinda-cordova-sqlite [![Build Status](https://travis-ci.org/kinda/kinda-cordova-sqlite.svg?branch=master)](https://travis-ci.org/kinda/kinda-cordova-sqlite)
+# anysql-cordova-sqlite [![Build Status](https://travis-ci.org/object-layer/anysql-cordova-sqlite.svg?branch=master)](https://travis-ci.org/object-layer/anysql-cordova-sqlite)
 
-```js
-// TODO: documentation!
-```
+Cordova SQLite implementation of the AnySQL API.
+
+## Documentation
+
+See [AnySQL](https://www.npmjs.com/package/anysql).
+
+## License
+
+MIT

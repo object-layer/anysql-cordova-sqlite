@@ -1,36 +1,38 @@
 'use strict';
 
-let _ = require('lodash');
-let util = require('kinda-util').create();
-let AwaitLock = require('await-lock');
-let KindaObject = require('kinda-object');
+import AwaitLock from 'await-lock';
+import sleep from 'sleep-promise';
 
-let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
-  this.creator = function(options = {}) {
-    if (!options.name) throw new Error('Cordova SQLite database name is missing');
+export class AnySQLCordovaSQLite {
+  constructor(url) {
+    if (!url) throw new Error('URL is missing');
+    let pos = url.indexOf(':');
+    let name = pos === -1 ? url : url.substr(pos + 1);
+    if (!name) throw new Error('Cordova SQLite database name is missing');
+    console.log(name);
     this.awaitLock = new AwaitLock();
     document.addEventListener('deviceready', () => {
-      let sqlite = window.cordova.require('io.kinda.cordova-sqlite-plugin.sqlite');
-      let connection = sqlite.createConnection(options.name);
-      connection.connect(err => {
+      let SQLite = window.cordova.require('cordova-sqlite-plugin.SQLite');
+      let sqlite = new SQLite(name);
+      sqlite.open(err => {
         if (err) throw err;
-        this.connection = connection;
+        this.sqlite = sqlite;
       });
     }, false);
-  };
+  }
 
-  this.initialize = async function() {
-    if (this.connection) return;
+  async initialize() {
+    if (this.sqlite) return;
     let timestamp = Date.now();
-    while (!this.connection) {
-      await util.timeout(200);
-      if (Date.now() - timestamp > 5000) {
-        throw new Error('initialization of KindaCordovaSQLite failed (Cordova didn\'t start after 5 seconds)');
+    while (!this.sqlite) {
+      await sleep(200);
+      if (Date.now() - timestamp > 10000) {
+        throw new Error('Initialization of AnySQLCordovaSQLite failed');
       }
     }
-  };
+  }
 
-  this.lock = async function(fn) {
+  async lock(fn) {
     await this.awaitLock.acquireAsync();
     try {
       await this.initialize();
@@ -38,31 +40,31 @@ let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
     } finally {
       this.awaitLock.release();
     }
-  };
+  }
 
-  this.query = async function(sql, values) {
+  async query(sql, values) {
     return await this.lock(async function() {
       return await this._query(sql, values);
     }.bind(this));
-  };
+  }
 
-  this._query = async function(sql, values) {
+  async _query(sql, values) {
     values = this.normalizeValues(values);
     let result = await this.__query(sql, values);
     result = this.normalizeResult(result);
     return result;
-  };
+  }
 
-  this.__query = function(sql, values) {
+  async __query(sql, values) {
     // console.log(sql, JSON.stringify(values));
     return new Promise((resolve, reject) => {
-      this.connection.query(sql, values, function(err, res) {
+      this.sqlite.query(sql, values, function(err, res) {
         if (err) reject(err); else resolve(res);
       });
     });
-  };
+  }
 
-  this.transaction = async function(fn) {
+  async transaction(fn) {
     return await this.lock(async function() {
       await this._query('BEGIN');
       try {
@@ -74,41 +76,52 @@ let KindaCordovaSQLite = KindaObject.extend('KindaCordovaSQLite', function() {
         throw err;
       }
     }.bind(this));
-  };
+  }
 
-  this.normalizeValues = function(values) {
+  close() {
+    return new Promise((resolve, reject) => {
+      this.sqlite.close(function(err) {
+        if (err) reject(err); else resolve();
+      });
+    });
+  }
+
+  normalizeValues(values) {
     if (values && values.length) {
-      values = _.map(values, function(val) {
+      values = values.map(function(val) {
         if (typeof val === 'undefined') val = null;
         else if (Buffer.isBuffer(val)) val = 'bin!' + val.toString('hex');
         return val;
       });
     }
     return values;
-  };
+  }
 
-  this.normalizeResult = function(result) {
+  normalizeResult(result) {
     if (!result) return result;
     let normalizedResult = [];
+    if (result.affectedRows != null) {
+      normalizedResult.affectedRows = result.affectedRows;
+    }
     if (result.insertId != null) {
       normalizedResult.insertId = result.insertId;
-    }
-    if (result.rowsAffected != null) {
-      normalizedResult.affectedRows = result.rowsAffected;
     }
     if (!result.rows) return normalizedResult;
     for (let row of result.rows) {
       let normalizedRow = {};
-      _.forOwn(row, function(val, key) { // eslint-disable-line no-loop-func
-        if (val && val.substr && val.substr(0, 4) === 'bin!') {
-          val = new Buffer(val.substr(4), 'hex');
+      for (let key in row) {
+        if (row.hasOwnProperty(key)) {
+          let val = row[key];
+          if (val && val.substr && val.substr(0, 4) === 'bin!') {
+            val = new Buffer(val.substr(4), 'hex');
+          }
+          normalizedRow[key] = val;
         }
-        normalizedRow[key] = val;
-      });
+      }
       normalizedResult.push(normalizedRow);
     }
     return normalizedResult;
-  };
-});
+  }
+}
 
-module.exports = KindaCordovaSQLite;
+export default AnySQLCordovaSQLite;
