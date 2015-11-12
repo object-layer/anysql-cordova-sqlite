@@ -9,7 +9,6 @@ export class AnySQLCordovaSQLite {
     let pos = url.indexOf(':');
     let name = pos === -1 ? url : url.substr(pos + 1);
     if (!name) throw new Error('Cordova SQLite database name is missing');
-    console.log(name);
     this.awaitLock = new AwaitLock();
     document.addEventListener('deviceready', () => {
       let SQLite = window.cordova.require('cordova-sqlite-plugin.SQLite');
