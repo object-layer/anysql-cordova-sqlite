@@ -1,6 +1,6 @@
 {
   "name": "anysql-cordova-sqlite",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Cordova SQLite implementation of the AnySQL API",
   "author": "Manuel Vila <mvila@3base.com>",
   "license": "MIT",
