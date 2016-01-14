@@ -1,7 +1,5 @@
 'use strict';
 
-require('babel/polyfill');
-
 let log = window.log = function(message) {
   let div = document.createElement('div');
   div.appendChild(document.createTextNode(message));
