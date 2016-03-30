@@ -1,4 +1,2 @@
-.eslintrc
 .travis.yml
-src
-example
+example/cordova-app/platforms

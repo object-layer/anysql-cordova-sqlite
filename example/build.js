@@ -1,7 +1,5 @@
 'use strict';
 
-// ./node_modules/.bin/babel-node example/build.js
-
 let fs = require('fs');
 let browserify = require('browserify');
 let babelify = require('babelify');
